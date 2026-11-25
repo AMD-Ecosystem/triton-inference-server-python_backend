@@ -32,7 +32,7 @@
 namespace triton { namespace backend { namespace python {
 
 
-#ifdef TRITON_ENABLE_GPU
+#if defined(TRITON_ENABLE_GPU) || defined(TRITON_ENABLE_ROCM)
 BackendMemoryRecord::BackendMemoryRecord(
     std::unique_ptr<BackendMemory> backend_memory)
     : backend_memory_(std::move(backend_memory))

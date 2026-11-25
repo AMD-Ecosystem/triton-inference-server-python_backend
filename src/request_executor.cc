@@ -298,24 +298,26 @@ ResponseAlloc(
       } break;
 #ifdef TRITON_ENABLE_ROCM
       case TRITONSERVER_MEMORY_GPU: {
-        auto err = hipSetDevice(*actual_memory_type_id);
-        if ((err != hipSuccess) && (err != hipErrorNoDevice) &&
-            (err != hipErrorInsufficientDriver)) {
-          return TRITONSERVER_ErrorNew(
-              TRITONSERVER_ERROR_INTERNAL,
-              std::string(
-                  "unable to set current HIP device: " +
-                  std::string(hipGetErrorString(err)))
-                  .c_str());
-        }
+        // InferResponseComplete takes ownership of the PbMemory passed back
+        // in buffer_userp; it frees the device buffer with the tensor.
+        BackendMemory* backend_memory;
+        std::unique_ptr<BackendMemory> lbackend_memory;
+        try {
+          THROW_IF_TRITON_ERROR(BackendMemory::Create(
+              nullptr /* manager */, BackendMemory::AllocationType::GPU,
+              *actual_memory_type_id, byte_size, &backend_memory));
+          lbackend_memory.reset(backend_memory);
 
-        err = hipMalloc(buffer, byte_size);
-        if (err != hipSuccess) {
-          return TRITONSERVER_ErrorNew(
-              TRITONSERVER_ERROR_INTERNAL,
-              std::string(
-                  "hipMalloc failed: " + std::string(hipGetErrorString(err)))
-                  .c_str());
+          std::unique_ptr<PbMemory> pb_memory = PbMemory::Create(
+              shm_pool, std::move(lbackend_memory), true /* copy_gpu */);
+          *buffer = pb_memory->DataPtr();
+          *buffer_userp = reinterpret_cast<void*>(pb_memory.get());
+          pb_memory.release();
+        }
+        catch (const PythonBackendException& pb_exception) {
+          TRITONSERVER_Error* err =
+              CreateTritonErrorFromException(pb_exception);
+          return err;
         }
         break;
       }

@@ -730,6 +730,27 @@ ModelInstanceState::ExecuteBLSRequest(
                 Stub()->ShmPool(), std::move(lbackend_memory))));
             gpu_buffer_helper.AddBuffer(input_tensor->Memory()->ShmHandle());
 #endif  // TRITON_ENABLE_GPU
+#ifdef TRITON_ENABLE_ROCM
+            // The stub always does the GPU buffer round trip for GPU inputs,
+            // so the parent must allocate the buffers or both sides deadlock.
+            BackendMemory* backend_memory;
+            std::unique_ptr<BackendMemory> lbackend_memory;
+            has_gpu_tensor = true;
+            TRITONSERVER_Error* error = BackendMemory::Create(
+                Model()->TritonMemoryManager(),
+                BackendMemory::AllocationType::GPU,
+                input_tensor->MemoryTypeId(), input_tensor->ByteSize(),
+                &backend_memory);
+            if (error != nullptr) {
+              LOG_MESSAGE(
+                  TRITONSERVER_LOG_ERROR, TRITONSERVER_ErrorMessage(error));
+              break;
+            }
+            lbackend_memory.reset(backend_memory);
+            input_tensor->SetMemory(std::move(PbMemory::Create(
+                Stub()->ShmPool(), std::move(lbackend_memory))));
+            gpu_buffer_helper.AddBuffer(input_tensor->Memory()->ShmHandle());
+#endif  // TRITON_ENABLE_ROCM
           }
         }
       }
@@ -2059,7 +2080,7 @@ ModelInstanceState::PrepareResponseHandle(
 
   for (auto& output_tensor : (*infer_response)->OutputTensors()) {
     if (!output_tensor->IsCPU()) {
-#ifdef TRITON_ENABLE_GPU
+#if defined(TRITON_ENABLE_GPU) || defined(TRITON_ENABLE_ROCM)
       std::unique_ptr<MemoryRecord> memory_record;
       // Need to transfer the ownership of the BackendMemory to the
       // MemoryManager so that the lifetime of the BackendMemory is managed.
@@ -2852,7 +2873,7 @@ TRITONBACKEND_GetBackendAttribute(
   // so Triton core won't blindly auto-complete kind that may not be supported.
   // Other instance groups setting are set to "no value" so that Triton core
   // will auto-complete them with default policy.
-#ifdef TRITON_ENABLE_GPU
+#if defined(TRITON_ENABLE_GPU) || defined(TRITON_ENABLE_ROCM)
   RETURN_IF_ERROR(TRITONBACKEND_BackendAttributeAddPreferredInstanceGroup(
       backend_attributes, TRITONSERVER_INSTANCEGROUPKIND_GPU, 0, nullptr, 0));
 #else

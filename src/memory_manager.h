@@ -52,7 +52,7 @@ class MemoryRecord {
   virtual ~MemoryRecord() = default;
 };
 
-#ifdef TRITON_ENABLE_GPU
+#if defined(TRITON_ENABLE_GPU) || defined(TRITON_ENABLE_ROCM)
 class BackendMemoryRecord : public MemoryRecord {
  public:
   BackendMemoryRecord(std::unique_ptr<BackendMemory> backend_memory);

@@ -154,17 +154,12 @@ PbMemory::CopyBuffer(
   }
 
 #ifdef TRITON_ENABLE_ROCM
-  hipMemcpyKind kind = hipMemcpyHostToDevice;
-  if (src->MemoryType() == TRITONSERVER_MEMORY_CPU &&
-      dst->MemoryType() == TRITONSERVER_MEMORY_GPU) {
+  hipMemcpyKind kind;
+  if (src_is_host && !dst_is_host) {
     kind = hipMemcpyHostToDevice;
-  } else if (
-      src->MemoryType() == TRITONSERVER_MEMORY_GPU &&
-      dst->MemoryType() == TRITONSERVER_MEMORY_CPU) {
+  } else if (!src_is_host && dst_is_host) {
     kind = hipMemcpyDeviceToHost;
-  } else if (
-      src->MemoryType() == TRITONSERVER_MEMORY_GPU &&
-      dst->MemoryType() == TRITONSERVER_MEMORY_GPU) {
+  } else {
     kind = hipMemcpyDeviceToDevice;
   }
 
