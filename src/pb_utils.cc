@@ -98,8 +98,7 @@ HIPHandler::HIPHandler()
 
     hipError_t cuda_err = (*cu_init_fn_)(0 /* flags */);
     if (cuda_err != hipSuccess) {
-      const char* error_string;
-      (void)(*cu_get_error_string_fn_)(cuda_err, &error_string);
+      const char* error_string = (*cu_get_error_string_fn_)(cuda_err);
       error_str_ = std::string("failed to call hipInit: ") + error_string;
       dlclose(dl_open_handle_);
       dl_open_handle_ = nullptr;
@@ -115,8 +114,7 @@ HIPHandler::PointerGetAttribute(
   hipError_t cuda_err =
       (*cu_pointer_get_attribute_fn_)(start_address, attribute, dev_ptr);
   if (cuda_err != hipSuccess) {
-    const char* error_string;
-    (void)(*cu_get_error_string_fn_)(cuda_err, &error_string);
+    const char* error_string = (*cu_get_error_string_fn_)(cuda_err);
     throw PythonBackendException(
         std::string(
             "failed to get hip pointer device attribute: " +
@@ -178,8 +176,7 @@ HIPHandler::HasPrimaryContext(int device)
   hipError_t cuda_err = (*cu_device_primary_ctx_get_state_fn_)(
       device, &ctx_flags, &ctx_is_active);
   if (cuda_err != hipSuccess) {
-    const char* error_string;
-    (void)(*cu_get_error_string_fn_)(cuda_err, &error_string);
+    const char* error_string = (*cu_get_error_string_fn_)(cuda_err);
     throw PythonBackendException(
         std::string(
             "failed to get primary context state: " + std::string(error_string))

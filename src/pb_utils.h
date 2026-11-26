@@ -302,7 +302,7 @@ class HIPHandler {
   std::string error_str_;
   hipError_t (*cu_pointer_get_attribute_fn_)(
       hipDeviceptr_t*, hipPointer_attribute, hipDeviceptr_t) = nullptr;
-  hipError_t (*cu_get_error_string_fn_)(hipError_t, const char**) = nullptr;
+  const char* (*cu_get_error_string_fn_)(hipError_t) = nullptr;
   hipError_t (*cu_init_fn_)(unsigned int) = nullptr;
   hipError_t (*cu_device_primary_ctx_get_state_fn_)(
       hipDevice_t, unsigned int*, int*) = nullptr;
